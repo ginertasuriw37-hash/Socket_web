@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GIN-Sync · Portal Diskusi Mahasiswa</title>
+  <meta name="description" content="GIN-Sync: portal diskusi mahasiswa real-time berbasis WebSocket. Beda ide, satu frekuensi.">
+  <meta name="theme-color" content="#0a1a44">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230a1a44'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.9' stroke-linecap='round'%3E%3Cpath d='M14.86 11.4A6 6 0 0 1 14.86 20.6'/%3E%3Cpath d='M17.43 8.34A10 10 0 0 1 17.43 23.66' stroke-opacity='.65'/%3E%3Cpath d='M20 5.28A14 14 0 0 1 20 26.72' stroke-opacity='.38'/%3E%3C/g%3E%3Ccircle cx='10.5' cy='16' r='2.4' fill='%23f2b134'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Banner status koneksi (fault tolerance): tampil saat server mati / jaringan putus -->
+  <div id="conn-banner" class="conn-banner" data-kind="connecting" role="status" aria-live="polite">
+    <span class="conn-banner__spinner" aria-hidden="true"></span>
+    <span id="conn-banner-text">Menghubungkan ke server…</span>
+  </div>
+
+  <noscript>
+    <p class="noscript">GIN-Sync membutuhkan JavaScript untuk berkomunikasi real-time. Aktifkan JavaScript lalu muat ulang halaman.</p>
+  </noscript>
+
+  <!-- ═════════════ LAYAR 1 · MASUK ═════════════ -->
+  <main id="view-login" class="login">
+    <header class="login__bar">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <rect class="mark__bg" width="32" height="32" rx="9"/>
+          <path class="mark__arc mark__arc--1" d="M14.86 11.4A6 6 0 0 1 14.86 20.6"/>
+          <path class="mark__arc mark__arc--2" d="M17.43 8.34A10 10 0 0 1 17.43 23.66"/>
+          <path class="mark__arc mark__arc--3" d="M20 5.28A14 14 0 0 1 20 26.72"/>
+          <circle class="mark__dot" cx="10.5" cy="16" r="2.4"/>
+        </svg>
+        <span class="brand__word"><b>GIN</b>-Sync</span>
+      </div>
+      <p class="login__bar-note">Tugas Mandiri · Sistem Paralel dan Terdistribusi</p>
+    </header>
+
+    <div class="login__body">
+      <div class="rings" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+      <section class="hero" aria-label="Tentang GIN-Sync">
+        <p class="pill"><span class="pill__dot" aria-hidden="true"></span>Portal Diskusi Mahasiswa</p>
+        <h1 class="hero__title">
+          Beda ide.<br>
+          <span class="hero__accent">Satu frekuensi.
+            <svg class="hero__wave" viewBox="0 0 240 14" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+              <path pathLength="1" d="M0 7q10-9 20 0t20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0 20 0"/>
+            </svg>
+          </span>
+        </h1>
+        <p class="hero__lede">Ruang diskusi real-time untuk mahasiswa. Buka obrolan global, atau masuk ke ruang privat kelas dengan kode akses.</p>
+        <ul class="chips">
+          <li>WebSocket real-time</li>
+          <li>Riwayat 50 pesan</li>
+          <li>Ruang privat berkode</li>
+          <li>Tahan putus koneksi</li>
+        </ul>
+      </section>
+
+      <section class="card" aria-labelledby="login-title">
+        <h2 id="login-title" class="card__title">Masuk ke ruangmu.</h2>
+        <p class="card__sub">Tentukan nama dan ruang diskusimu.</p>
+
+        <form id="login-form" class="form" novalidate autocomplete="off">
+          <div class="field">
+            <label class="field__label" for="input-name">Nama Pengguna</label>
+            <input id="input-name" name="nickname" type="text" inputmode="text" autocomplete="off" autocapitalize="words" spellcheck="false" maxlength="20" required placeholder="mis. Arya Putri" aria-describedby="name-help login-error">
+            <small id="name-help" class="field__help">2–20 karakter: huruf, angka, spasi, titik, _ atau -</small>
+          </div>
+
+          <div class="field">
+            <span id="room-label" class="field__label">Pilih Ruang</span>
+            <div id="room-picker" class="picker">
+              <button id="room-trigger" class="picker__trigger" type="button" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="room-label room-trigger-title">
+                <span class="picker__icon" aria-hidden="true">
+                  <svg class="ico" viewBox="0 0 20 20" data-access-icon="public"><circle cx="10" cy="10" r="7.2"/><path d="M2.8 10h14.4M10 2.8c2.2 2.1 3.2 4.5 3.2 7.2s-1 5.1-3.2 7.2c-2.2-2.1-3.2-4.5-3.2-7.2s1-5.1 3.2-7.2Z"/></svg>
+                  <svg class="ico" viewBox="0 0 20 20" data-access-icon="private" hidden><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>
+                </span>
+                <span class="picker__text">
+                  <span id="room-trigger-title" class="picker__title">Chat Global</span>
+                  <span id="room-trigger-sub" class="picker__sub">Terbuka untuk semua</span>
+                </span>
+                <svg class="ico picker__chev" viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7.5 5 5 5-5"/></svg>
+              </button>
+
+              <ul id="room-list" class="picker__list" role="listbox" tabindex="-1" aria-labelledby="room-label" hidden>
+                <li id="opt-chat-global" class="opt" role="option" aria-selected="true" data-room="chat-global" data-access="public" data-name="Chat Global">
+                  <span class="opt__icon" aria-hidden="true"><svg class="ico" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.2"/><path d="M2.8 10h14.4M10 2.8c2.2 2.1 3.2 4.5 3.2 7.2s-1 5.1-3.2 7.2c-2.2-2.1-3.2-4.5-3.2-7.2s1-5.1 3.2-7.2Z"/></svg></span>
+                  <span class="opt__text"><span class="opt__title">Chat Global</span><span class="opt__sub">Terbuka untuk semua</span></span>
+                  <svg class="ico opt__check" viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg>
+                </li>
+                <li id="opt-ti25f" class="opt" role="option" aria-selected="false" data-room="ti25f" data-access="private" data-name="TI25F">
+                  <span class="opt__icon" aria-hidden="true"><svg class="ico" viewBox="0 0 20 20"><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg></span>
+                  <span class="opt__text"><span class="opt__title">TI25F</span><span class="opt__sub">Khusus kelas TI25F · butuh kode akses</span></span>
+                  <svg class="ico opt__check" viewBox="0 0 20 20" aria-hidden="true"><path d="m4.5 10.5 3.5 3.5 7.5-8"/></svg>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div id="field-code" class="field field--code" hidden>
+            <label class="field__label" for="input-code">Kode Akses Ruang</label>
+            <div class="secret">
+              <input id="input-code" name="roomcode" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" maxlength="64" placeholder="Masukkan kode dari ketua kelas" aria-describedby="code-help login-error">
+              <button id="btn-eye" class="secret__btn" type="button" aria-label="Tampilkan kode" aria-pressed="false">
+                <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M1.8 10S5 4.5 10 4.5 18.2 10 18.2 10 15 15.5 10 15.5 1.8 10 1.8 10Z"/><circle cx="10" cy="10" r="2.4"/></svg>
+              </button>
+            </div>
+            <small id="code-help" class="field__help">Kode diverifikasi di server dan tidak disimpan di browser.</small>
+          </div>
+
+          <p id="login-error" class="notice" role="alert" hidden></p>
+
+          <button id="btn-join" class="btn btn--primary" type="submit" disabled>
+            <span>Masuk</span>
+            <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h11m0 0-4.5-4.5M15 10l-4.5 4.5"/></svg>
+          </button>
+        </form>
+
+        <p class="card__foot">
+          <span class="dot" data-conn data-state="connecting"></span>
+          <span data-conn-label>Menghubungkan…</span>
+          <span class="card__foot-sep" aria-hidden="true">·</span>
+          <span>Pesan hanya disimpan sementara di memori server.</span>
+        </p>
+      </section>
+    </div>
+
+    <footer class="login__foot">
+      <span>© GIN-Sync</span>
+      <span>Dibuat dengan Node.js · Express · Socket.IO</span>
+    </footer>
+  </main>
+
+  <!-- ═════════════ LAYAR 2 · RUANG DISKUSI ═════════════ -->
+  <div id="view-chat" class="shell" hidden>
+
+    <aside id="sidebar" class="sidebar" aria-label="Info ruang dan pengguna online">
+      <div class="sidebar__top">
+        <div class="brand brand--small">
+          <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+            <rect class="mark__bg" width="32" height="32" rx="9"/>
+            <path class="mark__arc mark__arc--1" d="M14.86 11.4A6 6 0 0 1 14.86 20.6"/>
+            <path class="mark__arc mark__arc--2" d="M17.43 8.34A10 10 0 0 1 17.43 23.66"/>
+            <path class="mark__arc mark__arc--3" d="M20 5.28A14 14 0 0 1 20 26.72"/>
+            <circle class="mark__dot" cx="10.5" cy="16" r="2.4"/>
+          </svg>
+          <span class="brand__word"><b>GIN</b>-Sync</span>
+        </div>
+        <button id="btn-close-drawer" class="icon-btn icon-btn--dark drawer-only" type="button" aria-label="Tutup panel">
+          <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15"/></svg>
+        </button>
+      </div>
+
+      <section class="roomcard" aria-labelledby="side-room-name">
+        <span class="roomcard__icon" aria-hidden="true">
+          <svg class="ico" viewBox="0 0 20 20" data-access-icon="public"><circle cx="10" cy="10" r="7.2"/><path d="M2.8 10h14.4M10 2.8c2.2 2.1 3.2 4.5 3.2 7.2s-1 5.1-3.2 7.2c-2.2-2.1-3.2-4.5-3.2-7.2s1-5.1 3.2-7.2Z"/></svg>
+          <svg class="ico" viewBox="0 0 20 20" data-access-icon="private" hidden><rect x="4.5" y="9" width="11" height="8" rx="2"/><path d="M7 9V6.5a3 3 0 0 1 6 0V9"/></svg>
+        </span>
+        <div class="roomcard__text">
+          <p class="roomcard__label">Ruang aktif</p>
+          <h2 id="side-room-name" class="roomcard__name"></h2>
+          <p id="side-room-topic" class="roomcard__topic"></p>
+        </div>
+      </section>
+
+      <section class="sidebar__section" aria-labelledby="roster-heading">
+        <h2 id="roster-heading" class="eyebrow">Pengguna Online <span id="user-count" class="count">0</span></h2>
+        <ul id="user-list" class="roster"></ul>
+      </section>
+
+      <footer class="sidebar__me">
+        <div class="me">
+          <span class="avatar-wrap"><span id="me-avatar" class="avatar" aria-hidden="true"></span><span class="presence" data-conn data-state="connecting" aria-hidden="true"></span></span>
+          <div class="me__text">
+            <strong id="me-name" class="me__name"></strong>
+            <span class="me__status" data-conn-label>Menghubungkan…</span>
+          </div>
+        </div>
+        <button id="btn-leave" class="btn btn--leave" type="button">
+          <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M8 3.5H5.5A1.5 1.5 0 0 0 4 5v10a1.5 1.5 0 0 0 1.5 1.5H8M12 6.5 15.5 10 12 13.5M15.5 10H8"/></svg>
+          <span>Keluar Ruangan</span>
+        </button>
+      </footer>
+    </aside>
+
+    <div id="backdrop" class="backdrop" hidden></div>
+
+    <section class="room" aria-labelledby="room-title">
+      <header class="room__head">
+        <button id="btn-drawer" class="icon-btn drawer-only" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Buka daftar pengguna online">
+          <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h14M3 10h14M3 14.5h14"/></svg>
+        </button>
+        <div class="room__titles">
+          <div class="room__line">
+            <h2 id="room-title" class="room__title"></h2>
+            <span id="room-badge" class="badge"></span>
+          </div>
+          <p id="room-topic" class="room__topic"></p>
+        </div>
+        <p class="conn" data-conn data-state="connecting" role="status">
+          <span class="conn__bars" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span data-conn-label>Menghubungkan…</span>
+        </p>
+      </header>
+
+      <div class="stream-wrap">
+        <div id="stream" class="stream" role="log" aria-live="polite" aria-relevant="additions" aria-label="Percakapan" tabindex="0">
+          <ol id="messages" class="messages"></ol>
+        </div>
+        <button id="btn-latest" class="latest" type="button" hidden>
+          <span aria-hidden="true">↓</span> <span id="latest-count">0</span> pesan baru
+        </button>
+      </div>
+
+      <div id="typing" class="typing" aria-hidden="true">
+        <span class="eq"><i></i><i></i><i></i><i></i></span>
+        <span id="typing-text"></span>
+      </div>
+
+      <form id="composer" class="composer" autocomplete="off" novalidate>
+        <div class="composer__box">
+          <label class="sr-only" for="input-message">Tulis pesan</label>
+          <textarea id="input-message" rows="1" maxlength="500" placeholder="Tulis pesan…" enterkeyhint="send" spellcheck="true"></textarea>
+          <span id="char-count" class="composer__count" hidden></span>
+          <button id="btn-send" class="send" type="submit" aria-label="Kirim pesan" disabled>
+            <span class="send__label">Kirim</span>
+            <svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 10 17 3l-4.5 14-2.7-5.3L3 10Zm6.8 1.7L17 3"/></svg>
+          </button>
+        </div>
+        <p class="composer__hint"><kbd>Enter</kbd> kirim · <kbd>Shift</kbd>+<kbd>Enter</kbd> baris baru</p>
+      </form>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- Pustaka klien Socket.IO disajikan oleh server itu sendiri (tanpa CDN → aman & jalan offline di LAN) -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="client.js"></script>
+</body>
+</html>

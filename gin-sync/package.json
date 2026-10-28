@@ -1,0 +1,19 @@
+{
+  "name": "gin-sync",
+  "version": "2.0.0",
+  "description": "GIN-Sync: Portal Diskusi Mahasiswa — aplikasi chat real-time berbasis WebSocket (Socket.IO) dengan ruang publik dan privat.",
+  "main": "server.js",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.22.3",
+    "socket.io": "^4.8.1"
+  }
+}
